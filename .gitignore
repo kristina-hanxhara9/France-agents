@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Enrichment state
+web_enrich_queue.json
+web_enrich_results.json
+france_retailers-with-keywords.enriched.xlsx
