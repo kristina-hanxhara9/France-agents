@@ -1,78 +1,129 @@
-# Setup — France Retailer Enrichment for GitHub Copilot
+# Setup — France Retailer Enrichment (GitHub Copilot CLI)
 
-This repo has two equivalent ways to run the enrichment, both batching
-10 rows per invocation and resuming from `france_retailers-enriched.json`:
+This repo ships a Copilot CLI custom agent that enriches retailers from
+`france_retailers-with-keywords.xlsx`, **10 rows per invocation**,
+resuming from `france_retailers-enriched.json` so you can run it over
+and over until the whole sheet is done.
 
-| Entry point | Where it lives | How you invoke it |
-|---|---|---|
-| **Custom agent** (recommended) | `.github/agents/web-enrich-retailers.agent.md` | Chat panel → agents dropdown → `web-enrich-retailers`, or type `/agents` → pick it |
-| **Prompt file** | `.github/prompts/enrich-retailers.prompt.md` | Type `/enrich-retailers` in Copilot Chat |
+**Use the Copilot CLI** — it has web search and URL fetch built in, no
+extensions, no API keys. (VS Code's Copilot does NOT have built-in web
+search; that path requires the Tavily-backed extension — see Appendix.)
 
 ## Prerequisites
 
-### 1. VS Code + GitHub Copilot
-- Install **GitHub Copilot** + **GitHub Copilot Chat** extensions.
-- Sign in.
+### 1. Install the Copilot CLI
 
-### 2. A web-search tool (this is the part that trips everyone up)
+```bash
+npm install -g @github/copilot
+```
 
-GitHub Copilot does **not** ship with a built-in web-search tool
-usable from a prompt file. You have two options — pick one:
+Sign in once:
 
-#### Option A: Install "Web Search for Copilot" (free-tier friendly)
-1. In VS Code, install the extension
-   **Web Search for Copilot** (publisher: Microsoft).
-   Repo: https://github.com/microsoft/vscode-websearchforcopilot
-2. Get a free Tavily API key at https://tavily.com and paste it when
-   the extension prompts you (stored in VS Code secret storage).
-3. Confirm the tool shows up: in Copilot Chat type `#` — you should
-   see `#websearch` in the suggestion list.
+```bash
+copilot
+```
 
-This is what the agent/prompt files in this repo use (`websearch` in
-the `tools:` frontmatter).
+(You'll be prompted to authenticate with GitHub on first launch.)
 
-#### Option B: Use `@github #web` (Bing, enterprise-gated)
-Only works if your GitHub org enabled the "Copilot Access to Bing"
-policy. If it is, you can manually trigger it per message with
-`@github #web <query>`, but this does not integrate cleanly with
-prompt files / custom agents — you'd have to invoke it by hand.
+Docs: https://docs.github.com/en/copilot/how-tos/copilot-cli/use-copilot-cli-agents/overview
 
-If neither option is available, the agent will silently run without
-web access and produce empty fields — so confirm Option A before you
-start.
+### 2. Drop your xlsx at the repo root
 
-### 3. Your xlsx
-Drop `france_retailers-with-keywords.xlsx` at the repo root.
+Place `france_retailers-with-keywords.xlsx` in the project root. The
+agent reads it from that path.
 
-## Usage
+### 3. That's it
 
-### Using the custom agent (recommended)
-1. Open Copilot Chat.
-2. In the chat input, click the agent dropdown (or type `/agents`) and
-   pick **web-enrich-retailers**.
-3. Send any message (e.g. `go`). It will do rows 2–11 and stop.
-4. Send the message again for the next 10, until it prints
-   `All rows enriched — nothing to do.`
+The `web` tool (search + fetch) is built into the CLI — no extension,
+no API key. The agent declares `tools: ['web', 'edit', 'execute', 'read', 'search']`
+and those all come for free.
 
-### Using the prompt file
-Same thing, just type `/enrich-retailers` each time instead of
-selecting an agent.
+## Running the agent
+
+### Interactive
+
+```bash
+copilot
+```
+
+Once inside, type `/agent` and pick **web-enrich-retailers**, then
+send `go` (or any message). It processes rows 2–11 and stops. Repeat:
+
+```
+/agent web-enrich-retailers
+go
+```
+
+…until it prints `All rows enriched — nothing to do.`
+
+### One-shot (scriptable)
+
+Each invocation = one batch of 10:
+
+```bash
+copilot --agent web-enrich-retailers --prompt "go"
+```
+
+Wrap it in a shell loop if you just want to let it rip:
+
+```bash
+while true; do
+  out=$(copilot --agent web-enrich-retailers --prompt "go")
+  echo "$out"
+  echo "$out" | grep -q "All rows enriched" && break
+done
+```
 
 ## Outputs
-- `france_retailers-enriched.md` — human-readable summary, appended per row.
-- `france_retailers-enriched.json` — structured data, keyed by `row_index`. This file doubles as the resume cursor — delete it to start over.
 
-## Things to verify on the first batch
+- **`france_retailers-enriched.md`** — human-readable, appended per row.
+- **`france_retailers-enriched.json`** — structured data. Each record's
+  first field is `row_index` (the xlsx row number). This file doubles
+  as the resume cursor; delete it to start over.
+
+## Sanity-check the first batch
+
 1. Run one batch.
-2. Open `france_retailers-enriched.json` — confirm it has 10 entries
-   with `row_index` as the first field on each.
-3. Pick 2 rows at random and google them yourself. If any website /
-   phone in the JSON doesn't appear in real search results, the model
-   is falling back on training data — tighten the "only save data
-   visible in snippets" rule in the agent file.
+2. Open `france_retailers-enriched.json`. Confirm 10 entries, each with
+   `row_index` first.
+3. Pick 2 rows at random. Google them yourself. If any website / phone
+   doesn't appear in real search results, the model is using training
+   data — sharpen the "only save data visible in snippets" rule in
+   `.github/agents/web-enrich-retailers.agent.md`.
 
-## Reference
-- Copilot prompt files: https://code.visualstudio.com/docs/copilot/customization/prompt-files
-- Copilot custom agents: https://code.visualstudio.com/docs/copilot/customization/custom-agents
-- Built-in tool names: https://code.visualstudio.com/docs/copilot/reference/copilot-vscode-features
-- Web Search extension: https://github.com/microsoft/vscode-websearchforcopilot
+## Layout
+
+```
+.github/
+  agents/
+    web-enrich-retailers.agent.md   ← CLI agent (PRIMARY)
+  prompts/
+    enrich-retailers.prompt.md      ← VS Code prompt variant (optional)
+  copilot-instructions.md           ← repo-wide rules
+prompt-enrich-retailers.md          ← human-readable reference
+france_retailers-with-keywords.xlsx ← you provide this (gitignored)
+france_retailers-enriched.json      ← generated, resume cursor
+france_retailers-enriched.md        ← generated, human-readable
+```
+
+## Appendix: the VS Code path (more fiddly)
+
+The VS Code Copilot extension does **not** include a built-in web
+search tool. To use the same agent file in VS Code Chat you'd need:
+
+1. Install the **Web Search for Copilot** extension by Microsoft
+   (https://github.com/microsoft/vscode-websearchforcopilot).
+2. Get a free Tavily API key at https://tavily.com and paste it when
+   the extension asks.
+3. Note that VS Code uses different tool identifiers (`web/fetch`,
+   `edit/editFiles`, `execute/runInTerminal`, etc.) — this agent file
+   uses the CLI naming (`web`, `edit`, `execute`).
+
+For this project, the CLI path is strictly simpler and is the
+recommended setup.
+
+## References
+- GitHub Copilot CLI overview: https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli
+- Custom agents configuration: https://docs.github.com/en/copilot/reference/custom-agents-configuration
+- Create custom agents for CLI: https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/create-custom-agents-for-cli
+- Sample agents: https://github.com/github/copilot-cli-for-beginners/tree/main/samples/agents
