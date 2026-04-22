@@ -14,7 +14,7 @@ Each time this prompt is run, enrich **exactly the next 10 un-processed rows** f
 Call `#websearch` with the row's `search_query` column, or build `{company_name} {trade_name} france` if missing. From the search-result **snippets only**, extract: website, phone, email, web_description, web_products, web_business_type.
 
 ### B. Website fetch (optional)
-If a website was found, call `#fetch` on it and prefer page-body data for: phone, email, facebook, instagram, linkedin, twitter, web_products, web_description. A `403` is normal — fall back to snippets.
+If a website was found, call `#web/fetch` on it and prefer page-body data for: phone, email, facebook, instagram, linkedin, twitter, web_products, web_description. A `403` is normal — fall back to snippets.
 
 ### C. Channel guess
 Score against search+fetch text only; top scorer becomes `web_channel_guess`:

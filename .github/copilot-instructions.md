@@ -14,10 +14,12 @@ prompt or chat session in this repo MUST follow these rules.
   data point came from, it's fabricated — drop it.
 
 ## Tool usage
-- Use `#websearch` for search. Use the row's `search_query` column as
-  the query when present.
-- Use `#fetch` for page loads. `403` responses are normal on French
+- Use `#websearch` (from the "Web Search for Copilot" extension) with
+  the row's `search_query` column as the query when present.
+- Use `#web/fetch` for page loads. `403` responses are normal on French
   retail sites — fall back to search snippets.
+- Use `#edit/editFiles` and `#edit/createFile` to write the output
+  files. Use `#execute/runInTerminal` if you need shell access.
 - Exclude these domains from trusted sources:
   `societe.com, verif.com, pappers.fr, wikipedia.org, indeed.fr, glassdoor.fr`.
 
